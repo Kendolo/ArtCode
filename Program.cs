@@ -11,7 +11,7 @@ namespace ArtCode
     {
         static void Main(string[] args)
         {
-            Bitmap image = new Bitmap("D:\\Projects\\GitHub\\ArtCode\\img1.bmp");
+            Bitmap image = new Bitmap("C:\\Users\\Julian\\Documents\\GitHub\\ArtCode\\Resources\\img1.bmp");
             int[,] imageMatrix = new int[image.Width, image.Height];
             int[] code = new int[image.Width * image.Height];
             int index = 0;
