@@ -4,36 +4,71 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
+using System.Windows.Forms;
 
 namespace ArtCode
 {
     class Program
     {
+        [STAThread]
         static void Main(string[] args)
         {
-            Bitmap image = new Bitmap("C:\\Users\\Julian\\Documents\\GitHub\\ArtCode\\Resources\\img1.bmp");
-            int[,] imageMatrix = new int[image.Width, image.Height];
-            int[] code = new int[image.Width * image.Height];
-            int index = 0;
+            OpenFileDialog open = new OpenFileDialog();
+            open.Filter = "Image Files(*.jpg; *.jpeg; *.gif; *.bmp)|*.jpg; *.jpeg; *.gif; *.bmp";
 
-            for(int i = 0; i < image.Height; i++)
+            if (open.ShowDialog() == DialogResult.OK)
             {
-                for(int j = 0; j < image.Width; j++)
+                Bitmap image = new Bitmap(open.FileName);
+
+                int[,] imageMatrix = new int[image.Width, image.Height];
+                int[] code = new int[image.Width * image.Height];
+                int index = 0;
+
+                for (int i = 0; i < image.Height; i++)
                 {
-                    imageMatrix[i, j] = Gray2Binary(image.GetPixel(j,i));
-                    code[index] = imageMatrix[i, j];
-                    index++;
-                    Console.Write(imageMatrix[i, j]);
+                    for (int j = 0; j < image.Width; j++)
+                    {
+                        imageMatrix[i, j] = Gray2Binary(image.GetPixel(j, i));
+                        code[index] = imageMatrix[i, j];
+                        index++;
+                        Console.Write(imageMatrix[i, j]);
+                    }
+                    Console.WriteLine();
                 }
                 Console.WriteLine();
-            }
 
-            Console.WriteLine();
-            for (int i = 0; i < code.Length; i++)
-            {
-                Console.Write(code[i]);
+                for (int i = 0; i < code.Length; i++)
+                {
+                    Console.Write(code[i]);
+                }
+
+                Bitmap newImage = new Bitmap(image.Width, image.Height);
+
+                for (int i = 0; i < image.Height; i++)
+                {
+                    for (int j = 0; j < image.Width; j++)
+                    {
+                        Color black = Color.Black;
+                        Color white = Color.White;
+
+                        if(imageMatrix[i,j] == 0)
+                        {
+                            newImage.SetPixel(j, i, black);
+                        }
+                        else
+                        {
+                            newImage.SetPixel(j, i, white);
+                        }
+                    }
+                }
+
+                Image img = (Image)newImage;
+                String newPath = "D:\\Projects\\GitHub\\ArtCode\\Resources\\newImg1.bmp";
+                img.Save(newPath);
+                System.Diagnostics.Process.Start(newPath);
+
+                Console.Read();
             }
-            Console.Read();
         }
 
         static int Gray2Binary(Color color)
