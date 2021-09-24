@@ -21,6 +21,11 @@ namespace ArtCode
             Bitmap newImage = Convert(oldImage);
 
             SaveImage((Image)newImage);
+
+            //Find marker using newImage
+            Scanner(newImage);
+
+            Console.ReadLine();
         }
 
         static void LoadImage(OpenFileDialog openInMethod)
@@ -83,6 +88,52 @@ namespace ArtCode
                     // Code to write the stream goes here.
                     newImage.Save(newImageStream, System.Drawing.Imaging.ImageFormat.Bmp);
                     newImageStream.Close();
+                }
+            }
+        }
+        public static void Scanner(Bitmap imageToBeChecked)
+        {
+            Console.WriteLine();
+            Color currentColor;
+            Color previousColor = new Color();
+            int colorCounter = 0;
+
+            int[] ratios = new int[5];
+
+            for(int i = 0; i < imageToBeChecked.Height; i++)
+            {
+                for (int j = 0; j < imageToBeChecked.Width; j++)
+                {
+                    currentColor = imageToBeChecked.GetPixel(j, i);
+
+                    if(currentColor != previousColor)
+                    {
+                        previousColor = currentColor;
+                        ratios[4] = ratios[3];
+                        ratios[3] = ratios[2];
+                        ratios[2] = ratios[1];
+                        ratios[1] = ratios[0];
+                        ratios[0] = colorCounter;
+                        colorCounter = 0;
+                        //Console.WriteLine();
+                        //Console.Write(ratios[6] + " : " + ratios[5] + " : " + ratios[4] + " : " + ratios[3] + " : " + ratios[2] + " : " + ratios[1] + " : " + ratios[0]);
+
+                        if(ratios[4] == 1 && ratios[3] == 1 && ratios[2] == 3 && ratios[1] == 1 && ratios[0] == 1)
+                        {
+                            Console.WriteLine("Possible marker in line " + (i+1) + " and column " + (j+1) + "!");
+                            //Console.Read();
+                        }
+                    }
+
+                    if(j == 0) //imageToBeChecked.Width - 1)
+                    {
+                        ratios[0] = 0;
+                        ratios[1] = 0;
+                        ratios[2] = 0;
+                        ratios[3] = 0;
+                        ratios[4] = 0;
+                    }
+                    colorCounter++;
                 }
             }
         }
