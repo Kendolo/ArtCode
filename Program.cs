@@ -108,11 +108,7 @@ namespace ArtCode
 
             for (int i = 0; i < imageToBeChecked.Height; i++)
             {
-                ratios[0] = 0;
-                ratios[1] = 0;
-                ratios[2] = 0;
-                ratios[3] = 0;
-                ratios[4] = 0;
+                Array.Clear(ratios,0,4);
 
                 for (int j = 0; j < imageToBeChecked.Width; j++)
                 {
@@ -121,10 +117,11 @@ namespace ArtCode
                     if(currentColor != previousColor)
                     {
                         previousColor = currentColor;
-                        ratios[4] = ratios[3];
-                        ratios[3] = ratios[2];
-                        ratios[2] = ratios[1];
-                        ratios[1] = ratios[0];
+
+                        for (int k = ratios.Length - 1 ; k > 0; k--)
+                        {
+                            ratios[k] = ratios[k - 1];
+                        }
                         ratios[0] = colorCounter;
                         colorCounter = 0;
 
@@ -146,11 +143,7 @@ namespace ArtCode
 
             for (int i = 0; i < imageToBeChecked.Width; i++)
             {
-                ratios[0] = 0;
-                ratios[1] = 0;
-                ratios[2] = 0;
-                ratios[3] = 0;
-                ratios[4] = 0;
+                Array.Clear(ratios, 0, 4);
 
                 for (int j = 0; j < imageToBeChecked.Height; j++)
                 {
@@ -159,10 +152,10 @@ namespace ArtCode
                     if (currentColor != previousColor)
                     {
                         previousColor = currentColor;
-                        ratios[4] = ratios[3];
-                        ratios[3] = ratios[2];
-                        ratios[2] = ratios[1];
-                        ratios[1] = ratios[0];
+                        for (int k = ratios.Length - 1; k > 0; k--)
+                        {
+                            ratios[k] = ratios[k - 1];
+                        }
                         ratios[0] = colorCounter;
                         colorCounter = 0;
 
