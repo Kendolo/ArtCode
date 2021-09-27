@@ -99,7 +99,9 @@ namespace ArtCode
             Color previousColor = new Color();
             int colorCounter = 0;
 
+            int[] counters = new int[5];
             int[] ratios = new int[5];
+            int markerSize = 0;
             List<Vector2> horizontalPositions = new List<Vector2>();
             List<Vector2> verticalPositions = new List<Vector2>();
             List<Vector2> matchingPositions = new List<Vector2>();
@@ -108,7 +110,8 @@ namespace ArtCode
 
             for (int i = 0; i < imageToBeChecked.Height; i++)
             {
-                Array.Clear(ratios,0,4);
+                Array.Clear(counters, 0, 4);
+                //Array.Clear(ratios, 0, 4);
 
                 for (int j = 0; j < imageToBeChecked.Width; j++)
                 {
@@ -118,17 +121,23 @@ namespace ArtCode
                     {
                         previousColor = currentColor;
 
-                        for (int k = ratios.Length - 1 ; k > 0; k--)
+                        for (int k = counters.Length - 1 ; k > 0; k--)
                         {
-                            ratios[k] = ratios[k - 1];
+                            counters[k] = counters[k - 1];
                         }
-                        ratios[0] = colorCounter;
+                        counters[0] = colorCounter;
                         colorCounter = 0;
 
-                        if(ratios[4] == 1 && ratios[3] == 1 && ratios[2] == 3 && ratios[1] == 1 && ratios[0] == 1 && currentColor == Color.FromArgb(255, 255, 255, 255))
+                        for (int r = 0; r < ratios.Length; r++)
                         {
+                            ratios[r] = (int)Math.Round((double)counters[r] / counters[0]);
+                        }
+
+                        if(ratios.SequenceEqual(new int[5] { 1, 1, 3, 1, 1 }) && currentColor == Color.FromArgb(255, 255, 255, 255))
+                        {
+                            markerSize = counters[0];
                             Console.WriteLine("Possible marker (horizontal): ");
-                            for (int p = 4; p > 1; p--)
+                            for (int p = 5 * markerSize - 1; p > 2 * markerSize - 1; p--)
                             {
                                 horizontalPositions.Add(new Vector2(i + 1, j - p));
                                 Console.WriteLine((i + 1) + ", " + (j - p));
@@ -143,7 +152,7 @@ namespace ArtCode
 
             for (int i = 0; i < imageToBeChecked.Width; i++)
             {
-                Array.Clear(ratios, 0, 4);
+                Array.Clear(counters, 0, 4);
 
                 for (int j = 0; j < imageToBeChecked.Height; j++)
                 {
@@ -152,17 +161,24 @@ namespace ArtCode
                     if (currentColor != previousColor)
                     {
                         previousColor = currentColor;
-                        for (int k = ratios.Length - 1; k > 0; k--)
+                        for (int k = counters.Length - 1; k > 0; k--)
                         {
-                            ratios[k] = ratios[k - 1];
+                            counters[k] = counters[k - 1];
                         }
-                        ratios[0] = colorCounter;
+                        counters[0] = colorCounter;
                         colorCounter = 0;
 
-                        if (ratios[4] == 1 && ratios[3] == 1 && ratios[2] == 3 && ratios[1] == 1 && ratios[0] == 1 && currentColor == Color.FromArgb(255, 255, 255, 255))
+                        for (int r = 0; r < ratios.Length; r++)
                         {
+                            ratios[r] = (int)Math.Round((double)counters[r] / counters[0]);
+                        }
+
+                        if (ratios.SequenceEqual(new int[5]{1, 1, 3, 1, 1}) && currentColor == Color.FromArgb(255, 255, 255, 255))
+                        {
+                            markerSize = counters[0];
+                            Console.WriteLine("Marker size: " + markerSize);
                             Console.WriteLine("Possible marker (vertical): ");
-                            for (int p = 4; p > 1; p--)
+                            for (int p = 5 * markerSize - 1; p > 2 * markerSize - 1; p--)
                             {
                                 verticalPositions.Add(new Vector2(j - p, i + 1));
                                 Console.WriteLine((j - p) + ", " + (i + 1));
@@ -198,7 +214,7 @@ namespace ArtCode
 
                 for (int j = 0; j < markerPositionGroup.Count(); j++)
                 {
-                    if (Math.Abs(matchingPositions[i].X - markerPositionGroup[j][0].X) < 3 && Math.Abs(matchingPositions[i].Y - markerPositionGroup[j][0].Y) < 3)
+                    if (Math.Abs(matchingPositions[i].X - markerPositionGroup[j][0].X) < 3 * markerSize && Math.Abs(matchingPositions[i].Y - markerPositionGroup[j][0].Y) < 3 * markerSize)
                     {
                         markerPositionGroup[j].Add(matchingPositions[i]);
                         passtRein = true;
