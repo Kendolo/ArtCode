@@ -45,8 +45,6 @@ namespace ArtCode
             Bitmap newImage = oldImage;
             Color black = Color.Black;
             Color white = Color.White;
-            int[] code = new int[oldImage.Width * oldImage.Height];
-            int index = 0;
 
             for (int i = 0; i < oldImage.Height; i++)
             {
@@ -55,22 +53,13 @@ namespace ArtCode
                     if (oldImage.GetPixel(j, i).GetBrightness() > 0.5f)
                     {
                         newImage.SetPixel(j, i, white);
-                        code[index] = 1;
                     }
                     else
                     {
                         newImage.SetPixel(j, i, black);
-                        code[index] = 0;
                     }                  
-                    index++;
                 }
             }
-
-            for (int i = 0; i < code.Length; i++)
-            {
-                Console.Write(code[i]);
-            }
-
             return newImage;
         }
 
@@ -86,7 +75,6 @@ namespace ArtCode
             {
                 if ((newImageStream = save.OpenFile()) != null)
                 {
-                    // Code to write the stream goes here.
                     newImage.Save(newImageStream, System.Drawing.Imaging.ImageFormat.Bmp);
                     newImageStream.Close();
                 }
@@ -111,7 +99,6 @@ namespace ArtCode
             for (int i = 0; i < imageToBeChecked.Height; i++)
             {
                 Array.Clear(counters, 0, 4);
-                //Array.Clear(ratios, 0, 4);
 
                 for (int j = 0; j < imageToBeChecked.Width; j++)
                 {
@@ -136,19 +123,15 @@ namespace ArtCode
                         if(ratios.SequenceEqual(new int[5] { 1, 1, 3, 1, 1 }) && currentColor == Color.FromArgb(255, 255, 255, 255))
                         {
                             markerSize = counters[0];
-                            Console.WriteLine("Possible marker (horizontal): ");
                             for (int p = 5 * markerSize - 1; p > 2 * markerSize - 1; p--)
                             {
                                 horizontalPositions.Add(new Vector2(i + 1, j - p));
-                                Console.WriteLine((i + 1) + ", " + (j - p));
                             }
                         }
                     }
                     colorCounter++;
                 }
             }
-
-            Console.WriteLine();
 
             for (int i = 0; i < imageToBeChecked.Width; i++)
             {
@@ -176,20 +159,15 @@ namespace ArtCode
                         if (ratios.SequenceEqual(new int[5]{1, 1, 3, 1, 1}) && currentColor == Color.FromArgb(255, 255, 255, 255))
                         {
                             markerSize = counters[0];
-                            Console.WriteLine("Marker size: " + markerSize);
-                            Console.WriteLine("Possible marker (vertical): ");
                             for (int p = 5 * markerSize - 1; p > 2 * markerSize - 1; p--)
                             {
                                 verticalPositions.Add(new Vector2(j - p, i + 1));
-                                Console.WriteLine((j - p) + ", " + (i + 1));
                             }
                         }
                     }
                     colorCounter++;
                 }
             }
-
-            Console.WriteLine();
 
             for (int i = 0; i < horizontalPositions.Count(); i++)
             {
@@ -202,16 +180,12 @@ namespace ArtCode
                 }
             }
 
-            Console.WriteLine();
-
             markerPositionGroup.Add(new List<Vector2>());
             markerPositionGroup[0].Add(matchingPositions[0]);
             bool passtRein = false;
 
             for (int i = 1; i < matchingPositions.Count(); i++)
             {
-                Console.WriteLine("Matching position: " + matchingPositions[i]);
-
                 for (int j = 0; j < markerPositionGroup.Count(); j++)
                 {
                     if (Math.Abs(matchingPositions[i].X - markerPositionGroup[j][0].X) < 3 * markerSize && Math.Abs(matchingPositions[i].Y - markerPositionGroup[j][0].Y) < 3 * markerSize)
@@ -235,7 +209,6 @@ namespace ArtCode
                 float ySum = 0;
                 for (int j = 0; j < markerPositionGroup[i].Count(); j++)
                 {
-                    Console.WriteLine(markerPositionGroup[i][j]);
                     xSum += markerPositionGroup[i][j].X;
                     ySum += markerPositionGroup[i][j].Y;
                 }
