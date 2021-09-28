@@ -21,7 +21,7 @@ namespace ArtCode
             Bitmap oldImage = new Bitmap(open.FileName);
             Bitmap newImage = Convert(oldImage);
 
-            //SaveImage((Image)newImage);
+            SaveImage((Image)newImage);
 
             //Find marker using newImage
             Scanner(newImage);
