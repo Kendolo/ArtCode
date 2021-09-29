@@ -21,11 +21,13 @@ namespace ArtCode
             Bitmap oldImage = new Bitmap(open.FileName);
             Bitmap newImage = Convert(oldImage);
 
-            SaveImage((Image)newImage);
-
             //Find marker using newImage
-            Scanner(newImage);
+            List<Vector2> markers = FindMarker(newImage);
 
+            //Image markedSpots = PrintPositions(newImage, markers);
+
+            newImage = Fill(markers, newImage);
+            SaveImage(newImage);
             Console.ReadLine();
         }
 
@@ -80,7 +82,7 @@ namespace ArtCode
                 }
             }
         }
-        public static void Scanner(Bitmap imageToBeChecked)
+        public static List<Vector2> FindMarker(Bitmap imageToBeChecked)
         {
             Console.WriteLine();
             Color currentColor;
@@ -219,6 +221,63 @@ namespace ArtCode
             {
                 Console.WriteLine("Marker at: " + markerPositions[i]);
             }
+
+            return markerPositions;
+        }
+
+        public static Image PrintPositions(Bitmap imageToBeMarked, List<Vector2> positions)
+        {
+            int xPos, yPos;
+            Graphics g = Graphics.FromImage(imageToBeMarked);
+            g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+            Image square = Bitmap.FromFile("D:\\Projects\\GitHub\\ArtCode\\Resources\\square2.bmp");
+
+            Color dotColor = Color.Turquoise;
+
+            for (int posIndex = 0; posIndex < positions.Count; posIndex++)
+            {
+                xPos = (int)Math.Round(positions[posIndex].X);
+                yPos = (int)Math.Round(positions[posIndex].Y);
+                imageToBeMarked.SetPixel(yPos, xPos, dotColor);
+                g.DrawImage(square, yPos - 2, xPos - 2);
+            }
+
+            return (Image)imageToBeMarked;
+        }
+
+        public static Bitmap Fill(List<Vector2> startingPositions, Bitmap image)
+        {
+            List<Vector2> stack = new List<Vector2>();
+            
+            for (int i = 0; i < startingPositions.Count; i++)
+            {
+                stack.Add(startingPositions[i]);
+            }
+
+            while (stack.Count > 0)
+            {
+                Console.WriteLine(stack.Count);
+                for (int i = 0; i < stack.Count; i++)
+                {
+                    int x = (int)Math.Round(stack[i].X);
+                    int y = (int)Math.Round(stack[i].Y);
+
+                    Console.WriteLine(image.GetPixel(y, x));
+
+                    if (image.GetPixel(y, x) == Color.FromArgb(255, 0, 0, 0))
+                    {
+                        Console.WriteLine("Ist schwarz!");
+                        image.SetPixel(y, x, Color.Yellow);
+                        
+                        stack.Add(new Vector2(x + 1, y));
+                        stack.Add(new Vector2(x - 1, y));
+                        stack.Add(new Vector2(x, y + 1));
+                        stack.Add(new Vector2(x, y - 1));
+                    }
+                    stack.RemoveAt(i);
+                }
+            }
+            return image;
         }
     }
 }
