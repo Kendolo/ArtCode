@@ -1,73 +1,171 @@
 ﻿using System;
 using System.Collections.Generic;
+
 using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
+
 using System.Drawing;
+using System.Drawing.Imaging;
+
 using System.Windows.Forms;
+
 using System.IO;
+
 using System.Numerics;
 
 namespace ArtCode
 {
     class Program
     {
+        static bool[,] bitMatrix;
+        static float[,] greyScaleMatrix;
+
+
+        static int rows = 0;
+        static int columns = 0;
+        static int denoiseIterations = 1;
+        static int thresholdBoxSize = 50;
+
+        static List<Vector2> markerPositions = new List<Vector2>();
+
         [STAThread]
         static void Main(string[] args)
         {
-            OpenFileDialog open = new OpenFileDialog();
-            LoadImage(open);
+            //Create color matrix from .bmp file
+            CreateMatrix();
 
-            Bitmap oldImage = new Bitmap(open.FileName);
-            Bitmap newImage = Convert(oldImage);
 
-            //Find marker using newImage
-            List<Vector2> markers = FindMarker(newImage);
+            //BinarizeColorMatrix(threshold);
+            //SaveColorMatrix2Bitmap();
 
-            //Image markedSpots = PrintPositions(newImage, markers);
+            //Retrieve marker position indices
+            //GetMarkerPositions();
 
-            newImage = Fill(markers, newImage);
-            SaveImage(newImage);
-            Console.ReadLine();
+            //Fill markers                                                      //Image markedSpots = PrintPositions(newImage, markers);
+            //Fill(markerPositions);                             
+            SaveMatrix();                                                       //<--
         }
 
-        static void LoadImage(OpenFileDialog openInMethod)
+        static void CreateMatrix()
         {
-            openInMethod.Filter = "Image Files(*.jpg; *.jpeg; *.gif; *.bmp)|*.jpg; *.jpeg; *.gif; *.bmp";
+            //Load Image
+            OpenFileDialog open = new OpenFileDialog();
+            open.Filter = "Image Files(*.jpg; *.jpeg; *.gif; *.bmp)|*.jpg; *.jpeg; *.gif; *.bmp";
 
-            if (openInMethod.ShowDialog() != DialogResult.OK)
+            if (open.ShowDialog() != DialogResult.OK)
             {
-                Console.WriteLine("Error");
+                Console.WriteLine("Open File Dialog Error");
                 Application.Exit();
             }
-        }
 
-        static Bitmap Convert(Bitmap oldImage)
-        {
-            Bitmap newImage = oldImage;
-            Color black = Color.Black;
-            Color white = Color.White;
+            Bitmap bitmap = new Bitmap(open.FileName);
+            
+            rows = bitmap.Height;
+            columns = bitmap.Width;
 
-            for (int i = 0; i < oldImage.Height; i++)
+            bitMatrix = new bool[rows, columns];
+
+
+            /*for (int i = 0; i < bitmap.Height; i++)
             {
-                for (int j = 0; j < oldImage.Width; j++)
+                for (int j = 0; j < bitmap.Width; j++)
                 {
-                    if (oldImage.GetPixel(j, i).GetBrightness() > 0.5f)
-                    {
-                        newImage.SetPixel(j, i, white);
-                    }
-                    else
-                    {
-                        newImage.SetPixel(j, i, black);
-                    }                  
+                    if (bitmap.GetPixel(j, i).GetBrightness() > 0.5f) bitMatrix[i, j] = true;
+                    else bitMatrix[i, j] = false;
+                }
+            }*/
+
+
+
+
+            greyScaleMatrix = new float[rows, columns];
+            for (int i = 0; i < bitmap.Height; i++)
+            {
+                for (int j = 0; j < bitmap.Width; j++)
+                {
+                    greyScaleMatrix[i, j] = bitmap.GetPixel(j, i).GetBrightness();
                 }
             }
-            return newImage;
+
+            for (int d = 0; d < denoiseIterations; d++)
+            {
+                for (int i = 0; i < bitmap.Height; i++)
+                {
+                    for (int j = 0; j < bitmap.Width; j++)
+                    {
+                        if (i == 0 && j == 0) greyScaleMatrix[i, j] = (greyScaleMatrix[i, j] + greyScaleMatrix[i, j + 1] + greyScaleMatrix[i + 1, j] + greyScaleMatrix[i + 1, j + 1]) / 4; //Ecke links-oben
+                        else if (i == 0 && j == columns - 1) greyScaleMatrix[i, j] = (greyScaleMatrix[i, j] + greyScaleMatrix[i, j - 1] + greyScaleMatrix[i + 1, j] + greyScaleMatrix[i + 1, j - 1]) / 4; //Ecke rechts-oben
+                        else if (i == rows - 1 && j == 0 ) greyScaleMatrix[i, j] = (greyScaleMatrix[i, j] + greyScaleMatrix[i - 1, j] + greyScaleMatrix[i, j + 1] + greyScaleMatrix[i - 1, j + 1]) / 4; //Ecke links-unten
+                        else if (i == rows - 1 && j == columns - 1) greyScaleMatrix[i, j] = (greyScaleMatrix[i, j] + greyScaleMatrix[i, j - 1] + greyScaleMatrix[i - 1, j] + greyScaleMatrix[i - 1, j - 1]) / 4; //Ecke rechts-unten
+                        else if (i == 0 && j > 0 && j < columns - 1) greyScaleMatrix[i, j] = (greyScaleMatrix[i, j] + greyScaleMatrix[i, j - 1] + greyScaleMatrix[i, j + 1] + greyScaleMatrix[i + 1, j] + greyScaleMatrix[i + 1, j + 1] + greyScaleMatrix[i + 1, j - 1]) / 6; //Kante oben
+                        else if (i > 0 && i < rows - 1 && j == columns - 1) greyScaleMatrix[i, j] = (greyScaleMatrix[i, j] + greyScaleMatrix[i - 1, j] + greyScaleMatrix[i, j - 1] + greyScaleMatrix[i + 1, j] + greyScaleMatrix[i - 1, j - 1] + greyScaleMatrix[i + 1, j - 1]) / 6; //Kante rechts
+                        else if (i == rows - 1 && j > 0 && j < columns - 1) greyScaleMatrix[i, j] = (greyScaleMatrix[i, j] + greyScaleMatrix[i - 1, j] + greyScaleMatrix[i, j - 1] + greyScaleMatrix[i, j + 1] + greyScaleMatrix[i - 1, j - 1] + greyScaleMatrix[i - 1, j + 1]) / 6; //Kante unten
+                        else if (i > 0 && i < rows - 1 && j == 0) greyScaleMatrix[i, j] = (greyScaleMatrix[i, j] + greyScaleMatrix[i - 1, j] + greyScaleMatrix[i, j + 1] + greyScaleMatrix[i + 1, j] + greyScaleMatrix[i - 1, j + 1] + greyScaleMatrix[i + 1, j + 1]) / 6; //Kante links
+                        else greyScaleMatrix[i, j] = (greyScaleMatrix[i, j] + greyScaleMatrix[i, j - 1] + greyScaleMatrix[i - 1, j - 1] + greyScaleMatrix[i - 1, j] + greyScaleMatrix[i - 1, j + 1] + greyScaleMatrix[i, j + 1] + greyScaleMatrix[i + 1, j + 1] + greyScaleMatrix[i + 1, j] + greyScaleMatrix[i + 1, j - 1]) / 9; //Kante links
+                    }
+                }
+            }
+
+            bitMatrix = new bool[rows, columns];
+
+            int tBoxesX = 0;
+            int tBoxesY = 0;
+
+            if (rows % thresholdBoxSize == 0) tBoxesY = rows / thresholdBoxSize;
+            else tBoxesY = rows / thresholdBoxSize + 1;
+
+            if (columns % thresholdBoxSize == 0) tBoxesX = columns / thresholdBoxSize;
+            else tBoxesX = columns / thresholdBoxSize + 1;
+
+            float[] tSums = new float[tBoxesX * tBoxesY];
+            int[] tDivisors = new int[tBoxesX * tBoxesY];
+
+            int index = 0;
+
+            for (int i = 0; i < rows; i++)
+            {
+                for (int j = 0; j < columns; j++)
+                {
+                    index = i / thresholdBoxSize * tBoxesX + j / thresholdBoxSize;
+                    tSums[index] += greyScaleMatrix[i, j];
+                    tDivisors[index]++;
+                }
+            }
+
+            float[] thresholds = new float[tBoxesX * tBoxesY];
+
+            for (int i = 0; i < thresholds.Length; i++)
+            {
+                thresholds[i] = tSums[i] / tDivisors[i];
+            }
+
+            //Create Matrix from image
+            for (int i = 0; i < rows; i++)
+            {
+                for (int j = 0; j < columns; j++)
+                {
+                    index = i / thresholdBoxSize * tBoxesX + j / thresholdBoxSize;
+                    if (greyScaleMatrix[i, j] > thresholds[index]) bitMatrix[i, j] = true;
+                    else bitMatrix[i, j] = false;
+                }
+            }
         }
 
-        static void SaveImage(Image newImage)
+        static void SaveMatrix()
         {
-            Stream newImageStream = new MemoryStream();
+            Bitmap bitmap = new Bitmap(columns, rows);
+            for (int i = 0; i < rows; i++)
+            {
+                for (int j = 0; j < columns; j++)
+                {
+                    if (bitMatrix[i, j]) bitmap.SetPixel(j, i, Color.White);
+                    else bitmap.SetPixel(j, i, Color.Black);
+                }
+            }
+
+            Stream stream = new MemoryStream();
             SaveFileDialog save = new SaveFileDialog();
 
             save.Filter = "BMP Image | *.bmp";
@@ -75,95 +173,75 @@ namespace ArtCode
 
             if (save.ShowDialog() == DialogResult.OK)
             {
-                if ((newImageStream = save.OpenFile()) != null)
+                if ((stream = save.OpenFile()) != null)
                 {
-                    newImage.Save(newImageStream, System.Drawing.Imaging.ImageFormat.Bmp);
-                    newImageStream.Close();
+                    bitmap.Save(stream, ImageFormat.Bmp);
+                    stream.Close();
                 }
             }
         }
-        public static List<Vector2> FindMarker(Bitmap imageToBeChecked)
+
+        
+
+        /*static void GetMarkerPositions()                                       //<--
         {
-            Console.WriteLine();
             Color currentColor;
             Color previousColor = new Color();
-            int colorCounter = 0;
 
-            int[] counters = new int[5];
-            int[] ratios = new int[5];
+            int colorCounter = 0;
             int markerSize = 0;
-            List<Vector2> horizontalPositions = new List<Vector2>();
-            List<Vector2> verticalPositions = new List<Vector2>();
+
+            int[] colorCounters = new int[5];
+            int[] ratios = new int[5];
+
+            List<Vector2> positionsHor = new List<Vector2>();
+            List<Vector2> positionsVer = new List<Vector2>();
             List<Vector2> matchingPositions = new List<Vector2>();
             List<List<Vector2>> markerPositionGroup = new List<List<Vector2>>();
-            List<Vector2> markerPositions = new List<Vector2>();
 
-            for (int i = 0; i < imageToBeChecked.Height; i++)
+            for (int t = 0; t < 2; t++)
             {
-                Array.Clear(counters, 0, 4);
-
-                for (int j = 0; j < imageToBeChecked.Width; j++)
+                int dim1 = 0;
+                int dim2 = 0;
+                
+                for (int i = 0; i < rows * columns; i++)
                 {
-                    currentColor = imageToBeChecked.GetPixel(j, i);
-
-                    if(currentColor != previousColor)
+                    if ((t == 0 && dim1 == rows) || (t == 1 && dim1 == columns))
                     {
-                        previousColor = currentColor;
+                        dim1 = 0;
+                        dim2++;
 
-                        for (int k = counters.Length - 1 ; k > 0; k--)
-                        {
-                            counters[k] = counters[k - 1];
-                        }
-                        counters[0] = colorCounter;
-                        colorCounter = 0;
-
-                        for (int r = 0; r < ratios.Length; r++)
-                        {
-                            ratios[r] = (int)Math.Round((double)counters[r] / counters[0]);
-                        }
-
-                        if(ratios.SequenceEqual(new int[5] { 1, 1, 3, 1, 1 }) && currentColor == Color.FromArgb(255, 255, 255, 255))
-                        {
-                            markerSize = counters[0];
-                            for (int p = 5 * markerSize - 1; p > 2 * markerSize - 1; p--)
-                            {
-                                horizontalPositions.Add(new Vector2(i + 1, j - p));
-                            }
-                        }
+                        Array.Clear(colorCounters, 0, 4);
                     }
-                    colorCounter++;
-                }
-            }
 
-            for (int i = 0; i < imageToBeChecked.Width; i++)
-            {
-                Array.Clear(counters, 0, 4);
+                    if (t == 0) currentColor = colorMatrix[dim1, dim2];
+                    else currentColor = colorMatrix[dim2, dim1];
 
-                for (int j = 0; j < imageToBeChecked.Height; j++)
-                {
-                    currentColor = imageToBeChecked.GetPixel(i, j);
+                    dim1++;
 
                     if (currentColor != previousColor)
                     {
                         previousColor = currentColor;
-                        for (int k = counters.Length - 1; k > 0; k--)
+
+                        for (int c = colorCounters.Length - 1; c > 0; c--)
                         {
-                            counters[k] = counters[k - 1];
+                            colorCounters[c] = colorCounters[c - 1];
                         }
-                        counters[0] = colorCounter;
+                        colorCounters[0] = colorCounter;
                         colorCounter = 0;
 
                         for (int r = 0; r < ratios.Length; r++)
                         {
-                            ratios[r] = (int)Math.Round((double)counters[r] / counters[0]);
+                            ratios[r] = (int)Math.Round((double)colorCounters[r] / colorCounters[0]);
                         }
 
-                        if (ratios.SequenceEqual(new int[5]{1, 1, 3, 1, 1}) && currentColor == Color.FromArgb(255, 255, 255, 255))
+                        if (ratios.SequenceEqual(new int[5] { 1, 1, 3, 1, 1 }) && currentColor == Color.White)
                         {
-                            markerSize = counters[0];
+                            markerSize = colorCounters[0];
                             for (int p = 5 * markerSize - 1; p > 2 * markerSize - 1; p--)
                             {
-                                verticalPositions.Add(new Vector2(j - p, i + 1));
+                                if (t == 0) positionsHor.Add(new Vector2(dim1 + 1, dim2 - p));
+                                else positionsVer.Add(new Vector2(dim2 - p, dim1 + 1));
                             }
                         }
                     }
@@ -171,13 +249,13 @@ namespace ArtCode
                 }
             }
 
-            for (int i = 0; i < horizontalPositions.Count(); i++)
+            for (int i = 0; i < positionsHor.Count(); i++)
             {
-                for (int j = 0; j < verticalPositions.Count(); j++)
+                for (int j = 0; j < positionsVer.Count(); j++)
                 {
-                    if (horizontalPositions[i] == verticalPositions[j])
+                    if (positionsHor[i] == positionsVer[j])
                     {
-                        matchingPositions.Add(horizontalPositions[i]);
+                        matchingPositions.Add(positionsHor[i]);
                     }
                 }
             }
@@ -222,7 +300,7 @@ namespace ArtCode
                 Console.WriteLine("Marker at: " + markerPositions[i]);
             }
 
-            return markerPositions;
+            Console.Read();
         }
 
         public static Image PrintPositions(Bitmap imageToBeMarked, List<Vector2> positions)
@@ -245,7 +323,7 @@ namespace ArtCode
             return (Image)imageToBeMarked;
         }
 
-        public static Bitmap Fill(List<Vector2> startingPositions, Bitmap image)
+        static void Fill(List<Vector2> startingPositions)
         {
             List<Vector2> stack = new List<Vector2>();
             
@@ -256,18 +334,14 @@ namespace ArtCode
 
             while (stack.Count > 0)
             {
-                Console.WriteLine(stack.Count);
                 for (int i = 0; i < stack.Count; i++)
                 {
                     int x = (int)Math.Round(stack[i].X);
                     int y = (int)Math.Round(stack[i].Y);
 
-                    Console.WriteLine(image.GetPixel(y, x));
-
-                    if (image.GetPixel(y, x) == Color.FromArgb(255, 0, 0, 0))
+                    if (colorMatrix[x, y] == Color.Black) //FromArgb(255, 0, 0, 0))
                     {
-                        Console.WriteLine("Ist schwarz!");
-                        image.SetPixel(y, x, Color.Yellow);
+                        colorMatrix[x, y] = Color.Yellow;
                         
                         stack.Add(new Vector2(x + 1, y));
                         stack.Add(new Vector2(x - 1, y));
@@ -277,7 +351,6 @@ namespace ArtCode
                     stack.RemoveAt(i);
                 }
             }
-            return image;
-        }
+        }*/
     }
 }
