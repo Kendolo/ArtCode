@@ -25,10 +25,8 @@ namespace ArtCode
 
         static int rows = 0;
         static int columns = 0;
-        static int denoiseIterations = 1;
-        static int thresholdBoxSize = 50;
-
-        static List<Vector2> markerPositions = new List<Vector2>();
+        static int denoiseIterations = 0;
+        static int thresholdBoxSize = 100;
 
         [STAThread]
         static void Main(string[] args)
@@ -41,7 +39,7 @@ namespace ArtCode
             //SaveColorMatrix2Bitmap();
 
             //Retrieve marker position indices
-            //GetMarkerPositions();
+            GetMarkerPositions();
 
             //Fill markers                                                      //Image markedSpots = PrintPositions(newImage, markers);
             //Fill(markerPositions);                             
@@ -182,11 +180,10 @@ namespace ArtCode
         }
 
         
-
-        /*static void GetMarkerPositions()                                       //<--
+        static void GetMarkerPositions()                                       //<--
         {
-            Color currentColor;
-            Color previousColor = new Color();
+            bool currentColor = false;
+            bool previousColor = false;
 
             int colorCounter = 0;
             int markerSize = 0;
@@ -194,12 +191,175 @@ namespace ArtCode
             int[] colorCounters = new int[5];
             int[] ratios = new int[5];
 
-            List<Vector2> positionsHor = new List<Vector2>();
-            List<Vector2> positionsVer = new List<Vector2>();
-            List<Vector2> matchingPositions = new List<Vector2>();
-            List<List<Vector2>> markerPositionGroup = new List<List<Vector2>>();
+            List<Vector2> centroids = new List<Vector2>();
+            List<List<Vector2>> centroidGroups = new List<List<Vector2>>();
 
-            for (int t = 0; t < 2; t++)
+            for (int i = 0; i < rows; i++)
+            {
+                Array.Clear(colorCounters, 0, 4);
+
+                for (int j = 0; j < columns; j++)
+                {
+                    currentColor = bitMatrix[i, j];
+
+                    if (currentColor != previousColor)
+                    {
+                        previousColor = currentColor;
+
+                        for (int c = colorCounters.Length - 1; c > 0; c--)
+                        {
+                            colorCounters[c] = colorCounters[c - 1];
+                        }
+                        colorCounters[0] = colorCounter;
+                        colorCounter = 0;
+
+                        for (int r = 0; r < ratios.Length; r++)
+                        {
+                            ratios[r] = (int)Math.Round((double)colorCounters[r] / colorCounters[0]);
+                        }
+
+                        if (ratios.SequenceEqual(new int[5] { 1, 1, 3, 1, 1 }) && currentColor)
+                        {
+                            markerSize = colorCounters[0];
+                            for (int p = 5 * markerSize - 1; p > 2 * markerSize - 1; p--)
+                            {
+                                centroids.Add(new Vector2(i + 1, j - p));
+                            }
+                        }
+                    }
+                    colorCounter++;
+                }
+            }
+
+            centroidGroups.Add(new List<Vector2>());
+            centroidGroups[0].Add(centroids[0]);
+            bool passtRein = false;
+
+            for (int i = 1; i < centroids.Count(); i++)
+            {
+                for (int j = 0; j < centroidGroups.Count(); j++)
+                {
+                    if (Math.Abs(centroids[i].X - centroidGroups[j][0].X) < 3 * markerSize && Math.Abs(centroids[i].Y - centroidGroups[j][0].Y) < 3 * markerSize)
+                    {
+                        centroidGroups[j].Add(centroids[i]);
+                        passtRein = true;
+                    }
+                }
+
+                if (!passtRein)
+                {
+                    centroidGroups.Add(new List<Vector2>());
+                    centroidGroups[centroidGroups.Count - 1].Add(centroids[i]);
+                }
+                passtRein = false;
+            }
+
+            Vector2[] newCentroids = new Vector2[centroidGroups.Count()];
+
+            for (int i = 0; i < centroidGroups.Count(); i++)
+            {
+                float xSum = 0;
+                float ySum = 0;
+                for (int j = 0; j < centroidGroups[i].Count(); j++)
+                {
+                    xSum += centroidGroups[i][j].X;
+                    ySum += centroidGroups[i][j].Y;
+                }
+                newCentroids[i] = new Vector2(xSum / centroidGroups[i].Count(), ySum / centroidGroups[i].Count());
+            }
+
+            for (int c = 0; c < newCentroids.Length; c++)
+            {
+                int startX = 0;
+                int endX = 0;
+                int startY = 0;
+                int endY = 0;
+
+                if (newCentroids[c].Y < 6 * markerSize)
+                    startY = 0;
+                if (newCentroids[c].Y > rows - 6 * markerSize)
+                    endY = rows;
+                if (newCentroids[c].X < 6 * markerSize)
+                    startX = 0;
+                if (newCentroids[c].X > columns - 6 * markerSize)
+                    endX = columns;
+
+                if (newCentroids[c].Y > 6 * markerSize)
+                    startY = (int)(newCentroids[c].Y - 6 * markerSize);
+                if (newCentroids[c].Y < rows - 6 * markerSize)
+                    endY = (int)(newCentroids[c].Y + 6 * markerSize);
+                if (newCentroids[c].X > 6 * markerSize)
+                    startX = (int)(newCentroids[c].X - 6 * markerSize);
+                if (newCentroids[c].X < columns - 6 * markerSize)
+                    endX = (int)(newCentroids[c].X + 6 * markerSize);
+
+                List<Vector2> areaCentroids = new List<Vector2>();
+                Array.Clear(ratios, 0, 4);
+                bool match = false;
+
+                for (int i = startY; i < endY; i++)
+                {
+                    Array.Clear(colorCounters, 0, 4);
+
+                    for (int j = startX; j < endX; j++)
+                    {
+                        currentColor = bitMatrix[i, j];
+
+                        if (currentColor != previousColor)
+                        {
+                            previousColor = currentColor;
+
+                            for (int cc = colorCounters.Length - 1; cc > 0; cc--)
+                            {
+                                colorCounters[cc] = colorCounters[cc - 1];
+                            }
+                            colorCounters[0] = colorCounter;
+                            colorCounter = 0;
+
+                            for (int r = 0; r < ratios.Length; r++)
+                            {
+                                ratios[r] = (int)Math.Round((double)colorCounters[r] / colorCounters[0]);
+                            }
+
+                            if (ratios.SequenceEqual(new int[5] { 1, 1, 3, 1, 1 }) && currentColor)
+                            {
+                                markerSize = colorCounters[0];
+                                for (int p = 5 * markerSize - 1; p > 2 * markerSize - 1; p--)
+                                {
+                                    centroidGroups[c].Add(new Vector2(i + 1, j - p));
+                                }
+
+                                match = true;
+                            }
+                        }
+                        colorCounter++;
+                    }
+                }
+
+                if (!match)
+                    centroidGroups.RemoveAt(c);
+            }
+
+            Vector2[] finalCentroids = new Vector2[centroidGroups.Count()];
+
+            for (int i = 0; i < centroidGroups.Count(); i++)
+            {
+                float xSum = 0;
+                float ySum = 0;
+                for (int j = 0; j < centroidGroups[i].Count(); j++)
+                {
+                    xSum += centroidGroups[i][j].X;
+                    ySum += centroidGroups[i][j].Y;
+                }
+                finalCentroids[i] = new Vector2(xSum / centroidGroups[i].Count(), ySum / centroidGroups[i].Count());
+            }
+
+            for (int i = 0; i < newCentroids.Length; i++)
+                Console.WriteLine("new centroids: " + newCentroids[i]);
+
+            Console.Read();
+
+            /*for (int t = 0; t < 2; t++)
             {
                 int dim1 = 0;
                 int dim2 = 0;
@@ -240,22 +400,22 @@ namespace ArtCode
                             markerSize = colorCounters[0];
                             for (int p = 5 * markerSize - 1; p > 2 * markerSize - 1; p--)
                             {
-                                if (t == 0) positionsHor.Add(new Vector2(dim1 + 1, dim2 - p));
+                                if (t == 0) centroids.Add(new Vector2(dim1 + 1, dim2 - p));
                                 else positionsVer.Add(new Vector2(dim2 - p, dim1 + 1));
                             }
                         }
                     }
-                    colorCounter++;
+
                 }
             }
 
-            for (int i = 0; i < positionsHor.Count(); i++)
+            for (int i = 0; i < centroids.Count(); i++)
             {
                 for (int j = 0; j < positionsVer.Count(); j++)
                 {
-                    if (positionsHor[i] == positionsVer[j])
+                    if (centroids[i] == positionsVer[j])
                     {
-                        matchingPositions.Add(positionsHor[i]);
+                        matchingPositions.Add(centroids[i]);
                     }
                 }
             }
@@ -300,7 +460,7 @@ namespace ArtCode
                 Console.WriteLine("Marker at: " + markerPositions[i]);
             }
 
-            Console.Read();
+            Console.Read();*/
         }
 
         public static Image PrintPositions(Bitmap imageToBeMarked, List<Vector2> positions)
@@ -323,7 +483,7 @@ namespace ArtCode
             return (Image)imageToBeMarked;
         }
 
-        static void Fill(List<Vector2> startingPositions)
+        /*static void Fill(List<Vector2> startingPositions)
         {
             List<Vector2> stack = new List<Vector2>();
             
