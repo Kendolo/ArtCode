@@ -268,6 +268,7 @@ namespace ArtCode
                 newCentroids[i] = new Vector2(xSum / centroidGroups[i].Count(), ySum / centroidGroups[i].Count());
             }
 
+            List<int> removeIndices = new List<int>();
             for (int c = 0; c < newCentroids.Length; c++)
             {
                 int startX = 0;
@@ -335,14 +336,26 @@ namespace ArtCode
                         colorCounter++;
                     }
                 }
-
                 if (!match)
-                    centroidGroups.RemoveAt(c);
+                    removeIndices.Add(c);
             }
 
-            Vector2[] finalCentroids = new Vector2[centroidGroups.Count()];
+            List<List<Vector2>> newCentroidGroups = new List<List<Vector2>>();
 
             for (int i = 0; i < centroidGroups.Count(); i++)
+            {
+                bool remove = false;
+                for (int r = 0; r < removeIndices.Count(); r++)
+                {
+                    if (i == removeIndices[r]) remove = true;
+                }
+
+                if (!remove) newCentroidGroups.Add(centroidGroups[i]);
+            }
+
+            Vector2[] finalCentroids = new Vector2[newCentroidGroups.Count()];
+
+            for (int i = 0; i < finalCentroids.Length; i++)
             {
                 float xSum = 0;
                 float ySum = 0;
@@ -354,8 +367,8 @@ namespace ArtCode
                 finalCentroids[i] = new Vector2(xSum / centroidGroups[i].Count(), ySum / centroidGroups[i].Count());
             }
 
-            for (int i = 0; i < newCentroids.Length; i++)
-                Console.WriteLine("new centroids: " + newCentroids[i]);
+            for (int i = 0; i < finalCentroids.Length; i++)
+                Console.WriteLine("final centroids: " + finalCentroids[i]);
 
             Console.Read();
 
