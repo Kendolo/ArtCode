@@ -15,6 +15,8 @@ using System.IO;
 
 using System.Numerics;
 
+using System.Diagnostics;
+
 namespace ArtCode
 {
     class Program
@@ -34,14 +36,10 @@ namespace ArtCode
             //Create color matrix from .bmp file
             CreateMatrix();
 
-
-            //BinarizeColorMatrix(threshold);
-            //SaveColorMatrix2Bitmap();
-
             //Retrieve marker position indices
-            GetMarkerPositions();
-
-            //Fill markers                                                      //Image markedSpots = PrintPositions(newImage, markers);
+            FindMarkers();
+            
+            //Image markedSpots = PrintPositions(newImage, markers);
             //Fill(markerPositions);                             
             SaveMatrix();                                                       //<--
         }
@@ -65,7 +63,6 @@ namespace ArtCode
 
             bitMatrix = new bool[rows, columns];
 
-
             /*for (int i = 0; i < bitmap.Height; i++)
             {
                 for (int j = 0; j < bitmap.Width; j++)
@@ -74,9 +71,6 @@ namespace ArtCode
                     else bitMatrix[i, j] = false;
                 }
             }*/
-
-
-
 
             greyScaleMatrix = new float[rows, columns];
             for (int i = 0; i < bitmap.Height; i++)
@@ -180,15 +174,18 @@ namespace ArtCode
         }
 
         
-        static void GetMarkerPositions()                                       //<--
+        static void FindMarkers()                                       //<--
         {
-            bool currentColor = false;
-            bool previousColor = false;
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
 
-            int colorCounter = 0;
+            bool currentBit = false;
+            bool previousBit = false;
+
+            int bitCounter = 0;
             int markerSize = 0;
 
-            int[] colorCounters = new int[5];
+            int[] bitCounters = new int[5];
             int[] ratios = new int[5];
 
             List<Vector2> centroids = new List<Vector2>();
@@ -196,38 +193,38 @@ namespace ArtCode
 
             for (int i = 0; i < rows; i++)
             {
-                Array.Clear(colorCounters, 0, 4);
+                Array.Clear(bitCounters, 0, 4);
 
                 for (int j = 0; j < columns; j++)
                 {
-                    currentColor = bitMatrix[i, j];
+                    currentBit = bitMatrix[i, j];
 
-                    if (currentColor != previousColor)
+                    if (currentBit != previousBit)
                     {
-                        previousColor = currentColor;
+                        previousBit = currentBit;
 
-                        for (int c = colorCounters.Length - 1; c > 0; c--)
+                        for (int c = bitCounters.Length - 1; c > 0; c--)
                         {
-                            colorCounters[c] = colorCounters[c - 1];
+                            bitCounters[c] = bitCounters[c - 1];
                         }
-                        colorCounters[0] = colorCounter;
-                        colorCounter = 0;
+                        bitCounters[0] = bitCounter;
+                        bitCounter = 0;
 
                         for (int r = 0; r < ratios.Length; r++)
                         {
-                            ratios[r] = (int)Math.Round((double)colorCounters[r] / colorCounters[0]);
+                            ratios[r] = (int)Math.Round((double)bitCounters[r] / bitCounters[0]);
                         }
 
-                        if (ratios.SequenceEqual(new int[5] { 1, 1, 3, 1, 1 }) && currentColor)
+                        if (ratios.SequenceEqual(new int[5] { 1, 1, 3, 1, 1 }) && currentBit)
                         {
-                            markerSize = colorCounters[0];
+                            markerSize = bitCounters[0];
                             for (int p = 5 * markerSize - 1; p > 2 * markerSize - 1; p--)
                             {
                                 centroids.Add(new Vector2(i + 1, j - p));
                             }
                         }
                     }
-                    colorCounter++;
+                    bitCounter++;
                 }
             }
 
@@ -284,7 +281,6 @@ namespace ArtCode
                     startX = 0;
                 if (newCentroids[c].X > columns - 6 * markerSize)
                     endX = columns;
-
                 if (newCentroids[c].Y > 6 * markerSize)
                     startY = (int)(newCentroids[c].Y - 6 * markerSize);
                 if (newCentroids[c].Y < rows - 6 * markerSize)
@@ -294,46 +290,45 @@ namespace ArtCode
                 if (newCentroids[c].X < columns - 6 * markerSize)
                     endX = (int)(newCentroids[c].X + 6 * markerSize);
 
-                List<Vector2> areaCentroids = new List<Vector2>();
                 Array.Clear(ratios, 0, 4);
                 bool match = false;
 
-                for (int i = startY; i < endY; i++)
+                for (int j = startX; j < endX; j++)                   
                 {
-                    Array.Clear(colorCounters, 0, 4);
+                    Array.Clear(bitCounters, 0, 4);
 
-                    for (int j = startX; j < endX; j++)
+                    for (int i = startY; i < endY; i++)
                     {
-                        currentColor = bitMatrix[i, j];
+                        currentBit = bitMatrix[i, j];
 
-                        if (currentColor != previousColor)
+                        if (currentBit != previousBit)
                         {
-                            previousColor = currentColor;
+                            previousBit = currentBit;
 
-                            for (int cc = colorCounters.Length - 1; cc > 0; cc--)
+                            for (int cc = bitCounters.Length - 1; cc > 0; cc--)
                             {
-                                colorCounters[cc] = colorCounters[cc - 1];
+                                bitCounters[cc] = bitCounters[cc - 1];
                             }
-                            colorCounters[0] = colorCounter;
-                            colorCounter = 0;
+                            bitCounters[0] = bitCounter;
+                            bitCounter = 0;
 
                             for (int r = 0; r < ratios.Length; r++)
                             {
-                                ratios[r] = (int)Math.Round((double)colorCounters[r] / colorCounters[0]);
+                                ratios[r] = (int)Math.Round((double)bitCounters[r] / bitCounters[0]);
                             }
 
-                            if (ratios.SequenceEqual(new int[5] { 1, 1, 3, 1, 1 }) && currentColor)
+                            if (ratios.SequenceEqual(new int[5] { 1, 1, 3, 1, 1 }) && currentBit)
                             {
-                                markerSize = colorCounters[0];
+                                markerSize = bitCounters[0];
                                 for (int p = 5 * markerSize - 1; p > 2 * markerSize - 1; p--)
                                 {
-                                    centroidGroups[c].Add(new Vector2(i + 1, j - p));
+                                    centroidGroups[c].Add(new Vector2(j + 1, i - p));
                                 }
 
                                 match = true;
                             }
                         }
-                        colorCounter++;
+                        bitCounter++;
                     }
                 }
                 if (!match)
@@ -359,121 +354,21 @@ namespace ArtCode
             {
                 float xSum = 0;
                 float ySum = 0;
-                for (int j = 0; j < centroidGroups[i].Count(); j++)
+                for (int j = 0; j < newCentroidGroups[i].Count(); j++)
                 {
-                    xSum += centroidGroups[i][j].X;
-                    ySum += centroidGroups[i][j].Y;
+                    xSum += newCentroidGroups[i][j].X;
+                    ySum += newCentroidGroups[i][j].Y;
                 }
-                finalCentroids[i] = new Vector2(xSum / centroidGroups[i].Count(), ySum / centroidGroups[i].Count());
+                finalCentroids[i] = new Vector2((int)Math.Round(xSum / newCentroidGroups[i].Count()), (int)Math.Round(ySum / newCentroidGroups[i].Count()));
             }
 
+            stopwatch.Stop();
+
+            Console.WriteLine("It took " + stopwatch.ElapsedMilliseconds + " milliseconds to find the following " + finalCentroids.Length + " markers in the " + columns + " by " + rows + " image:");
             for (int i = 0; i < finalCentroids.Length; i++)
                 Console.WriteLine("final centroids: " + finalCentroids[i]);
 
             Console.Read();
-
-            /*for (int t = 0; t < 2; t++)
-            {
-                int dim1 = 0;
-                int dim2 = 0;
-                
-                for (int i = 0; i < rows * columns; i++)
-                {
-                    if ((t == 0 && dim1 == rows) || (t == 1 && dim1 == columns))
-                    {
-                        dim1 = 0;
-                        dim2++;
-
-                        Array.Clear(colorCounters, 0, 4);
-                    }
-
-                    if (t == 0) currentColor = colorMatrix[dim1, dim2];
-                    else currentColor = colorMatrix[dim2, dim1];
-
-                    dim1++;
-
-                    if (currentColor != previousColor)
-                    {
-                        previousColor = currentColor;
-
-                        for (int c = colorCounters.Length - 1; c > 0; c--)
-                        {
-                            colorCounters[c] = colorCounters[c - 1];
-                        }
-                        colorCounters[0] = colorCounter;
-                        colorCounter = 0;
-
-                        for (int r = 0; r < ratios.Length; r++)
-                        {
-                            ratios[r] = (int)Math.Round((double)colorCounters[r] / colorCounters[0]);
-                        }
-
-                        if (ratios.SequenceEqual(new int[5] { 1, 1, 3, 1, 1 }) && currentColor == Color.White)
-                        {
-                            markerSize = colorCounters[0];
-                            for (int p = 5 * markerSize - 1; p > 2 * markerSize - 1; p--)
-                            {
-                                if (t == 0) centroids.Add(new Vector2(dim1 + 1, dim2 - p));
-                                else positionsVer.Add(new Vector2(dim2 - p, dim1 + 1));
-                            }
-                        }
-                    }
-
-                }
-            }
-
-            for (int i = 0; i < centroids.Count(); i++)
-            {
-                for (int j = 0; j < positionsVer.Count(); j++)
-                {
-                    if (centroids[i] == positionsVer[j])
-                    {
-                        matchingPositions.Add(centroids[i]);
-                    }
-                }
-            }
-
-            markerPositionGroup.Add(new List<Vector2>());
-            markerPositionGroup[0].Add(matchingPositions[0]);
-            bool passtRein = false;
-
-            for (int i = 1; i < matchingPositions.Count(); i++)
-            {
-                for (int j = 0; j < markerPositionGroup.Count(); j++)
-                {
-                    if (Math.Abs(matchingPositions[i].X - markerPositionGroup[j][0].X) < 3 * markerSize && Math.Abs(matchingPositions[i].Y - markerPositionGroup[j][0].Y) < 3 * markerSize)
-                    {
-                        markerPositionGroup[j].Add(matchingPositions[i]);
-                        passtRein = true;
-                    }
-                }
-
-                if (!passtRein)
-                {
-                    markerPositionGroup.Add(new List<Vector2>());
-                    markerPositionGroup[markerPositionGroup.Count - 1].Add(matchingPositions[i]);
-                }
-                passtRein = false;
-            }
-
-            for (int i = 0; i < markerPositionGroup.Count(); i++)
-            {
-                float xSum = 0;
-                float ySum = 0;
-                for (int j = 0; j < markerPositionGroup[i].Count(); j++)
-                {
-                    xSum += markerPositionGroup[i][j].X;
-                    ySum += markerPositionGroup[i][j].Y;
-                }
-                markerPositions.Add(new Vector2(xSum / markerPositionGroup[i].Count(), ySum / markerPositionGroup[i].Count()));
-            }
-
-            for (int i = 0; i < markerPositions.Count(); i++)
-            {
-                Console.WriteLine("Marker at: " + markerPositions[i]);
-            }
-
-            Console.Read();*/
         }
 
         public static Image PrintPositions(Bitmap imageToBeMarked, List<Vector2> positions)
@@ -496,7 +391,7 @@ namespace ArtCode
             return (Image)imageToBeMarked;
         }
 
-        /*static void Fill(List<Vector2> startingPositions)
+        static void Fill(List<Vector2> startingPositions)   //funktion muss überarbeitet werden!
         {
             List<Vector2> stack = new List<Vector2>();
             
@@ -512,9 +407,9 @@ namespace ArtCode
                     int x = (int)Math.Round(stack[i].X);
                     int y = (int)Math.Round(stack[i].Y);
 
-                    if (colorMatrix[x, y] == Color.Black) //FromArgb(255, 0, 0, 0))
+                    if (bitMatrix[x, y]) //FromArgb(255, 0, 0, 0))
                     {
-                        colorMatrix[x, y] = Color.Yellow;
+                        bitMatrix[x, y] = true; 
                         
                         stack.Add(new Vector2(x + 1, y));
                         stack.Add(new Vector2(x - 1, y));
@@ -524,6 +419,6 @@ namespace ArtCode
                     stack.RemoveAt(i);
                 }
             }
-        }*/
+        }
     }
 }
